@@ -27,6 +27,7 @@ function love.load()
    piece = nil
    piecex = 0
    piecey = 0 
+   score = 0
 end
 
 function love.keypressed(key, unicode)
@@ -65,6 +66,7 @@ function try_piece_shift(dir)
    piecex = piecex + dir
 end
 
+-- drop is not quite the right word. Anytime the block is forced down, either by player or timer.
 function try_piece_drop()
    if piece_bonks() then
       for y,row in ipairs(piece) do
@@ -76,9 +78,26 @@ function try_piece_drop()
       end
 
       piece = nil
+
+      try_clearing_rows()
    else
       piecey = piecey + 1
    end
+end
+
+function try_clearing_rows()
+   local rows_to_clear = {}
+   local clear_row
+
+   for y,row in ipairs(playfield) do
+      clear_row = true
+      for x,v in ipairs(row) do
+	 if v == 0 then clear_row = false end
+      end
+      if clear_row then table.insert(rows_to_clear, y) end
+   end
+
+   score = score + (#rows_to_clear) ^ 2
 end
 
 function love.update(delta)
@@ -98,6 +117,7 @@ function love.update(delta)
 	 til_next_piece = piece_timeout
 
 	 -- TODO: Real block...
+	 -- TODO: Check for collisions on the way in (so the game can end...)
 	 piece = {{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,0,0,0}}
 	 piecex = playfield_width / 2
 	 piecey = 1
@@ -130,6 +150,8 @@ function love.draw()
       love.graphics.print("Paused", 400, 300)
    end
 
+   love.graphics.print("Score: " .. tostring(score), playfield_screenx, playfield_screeny - 20)
+
    love.graphics.rectangle("line", playfield_screenx - 1, playfield_screeny - 1, playfield_width * block_width + 2, playfield_height * block_height + 2)
 
    -- grid is 10x25,10px/block, from 100, 100 to 199, 249
@@ -154,5 +176,5 @@ function love.draw()
 end
 
 function draw_block(x, y)
-   love.graphics.rectangle("line", (x - 1) * block_width + playfield_screenx, (y - 1) * block_height + playfield_screeny, block_width - 2, block_height - 2)
+   love.graphics.rectangle("line", (x - 1) * block_width + playfield_screenx, (y - 1) * block_height + playfield_screeny, block_width - 1, block_height - 1)
 end
