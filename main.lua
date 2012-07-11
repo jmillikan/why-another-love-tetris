@@ -1,6 +1,5 @@
 function love.load()
    -- game constants
-
    block_width = 12
    block_height = 12
 
@@ -9,9 +8,7 @@ function love.load()
    playfield_screenx = 400 - playfield_width * block_width / 2
    playfield_screeny = 300 - playfield_height * block_height / 2
 
-
    -- game state
-
    playfield = {}
 
    for y=1,playfield_height do
@@ -24,12 +21,64 @@ function love.load()
 
    game_paused = false
 
-   drop_timeout = 0.05
+   drop_timeout = 0.2
    piece_timeout = 2
    til_next_piece = piece_timeout
    piece = nil
    piecex = 0
    piecey = 0 
+end
+
+function love.keypressed(key, unicode)
+   if piece then
+      if key == "down" then
+	 try_piece_drop()
+      end
+
+      if key == "left" then
+	 try_piece_shift(-1)
+      end
+
+      if key == "right" then
+	 try_piece_shift(1)
+      end
+   end
+end
+
+function try_piece_shift(dir)
+   -- dir is just an integer...
+   -- meh
+
+   for y,row in ipairs(piece) do
+      for x,v in ipairs(row) do
+	 if piece[y][x] == 1 then
+	    newx = piecex + (x - 1) + dir
+
+	    -- out to left or right?
+	    if newx < 1 or newx > playfield_width then
+	       return
+	    end
+	 end
+      end
+   end
+
+   piecex = piecex + dir
+end
+
+function try_piece_drop()
+   if piece_bonks() then
+      for y,row in ipairs(piece) do
+	 for x,i in ipairs(row) do
+	    if piece[y][x] == 1 then
+	       playfield[piecey + (y - 1)][piecex + (x - 1)] = 1
+	    end
+	 end
+      end
+
+      piece = nil
+   else
+      piecey = piecey + 1
+   end
 end
 
 function love.update(delta)
@@ -41,30 +90,14 @@ function love.update(delta)
       if til_next_drop <= 0 then
 	 til_next_drop = til_next_drop + drop_timeout
 
-	 if piece_bonks() then
-	    for y,row in ipairs(piece) do
-	       for x,i in ipairs(row) do
-		  if piece[y][x] == 1 then
-		     playfield[piecey + (y - 1)][piecex + (x - 1)] = 1
-		  end
-	       end
-	    end
-
-	    piece = nil
-	 else
-	    piecey = piecey + 1
-	 end
-	 
-	 -- nil out piece if done...
-	 
+	 try_piece_drop()
       end
    else
       til_next_piece = til_next_piece - delta
       if til_next_piece <= 0 then
 	 til_next_piece = piece_timeout
-	 -- TODO: Spawn block...
-	 
-	 -- Heh heh
+
+	 -- TODO: Real block...
 	 piece = {{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,0,0,0}}
 	 piecex = playfield_width / 2
 	 piecey = 1
@@ -121,5 +154,5 @@ function love.draw()
 end
 
 function draw_block(x, y)
-   love.graphics.rectangle("line", (x - 1) * block_width + playfield_screenx, (y - 1) * block_height + playfield_screeny, block_width, block_height)
+   love.graphics.rectangle("line", (x - 1) * block_width + playfield_screenx, (y - 1) * block_height + playfield_screeny, block_width - 2, block_height - 2)
 end
