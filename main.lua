@@ -14,18 +14,22 @@ function love.load()
 
    playfield = {}
 
-   for i=1,playfield_width * playfield_height do
-      playfield[i] = 0
+   for y=1,playfield_height do
+      playfield[y] = {}
+
+      for x=1,playfield_width do
+	 playfield[y][x] = 0
+      end
    end
 
    game_paused = false
 
-   drop_timeout = 1
+   drop_timeout = 0.05
    piece_timeout = 2
    til_next_piece = piece_timeout
    piece = nil
-
-   
+   piecex = 0
+   piecey = 0 
 end
 
 function love.update(delta)
@@ -37,7 +41,19 @@ function love.update(delta)
       if til_next_drop <= 0 then
 	 til_next_drop = til_next_drop + drop_timeout
 
-	 piecey = piecey + 1
+	 if piece_bonks() then
+	    for y,row in ipairs(piece) do
+	       for x,i in ipairs(row) do
+		  if piece[y][x] == 1 then
+		     playfield[piecey + (y - 1)][piecex + (x - 1)] = 1
+		  end
+	       end
+	    end
+
+	    piece = nil
+	 else
+	    piecey = piecey + 1
+	 end
 	 
 	 -- nil out piece if done...
 	 
@@ -52,10 +68,26 @@ function love.update(delta)
 	 piece = {{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,0,0,0}}
 	 piecex = playfield_width / 2
 	 piecey = 1
-	 
 
 	 piece_on_screen = true
 	 til_next_drop = drop_timeout
+      end
+   end
+end
+
+function piece_bonks()
+   for y,row in ipairs(piece) do
+      for x,v in ipairs(row) do
+	 -- below playing field?
+	 if piece[y][x] == 1 then
+	    if piecey + (y - 1) + 1 > playfield_height then
+	       return true
+	    end
+
+	    if playfield[piecey + (y - 1) + 1][piecex + (x - 1)] == 1 then
+	       return true
+	    end
+	 end
       end
    end
 end
@@ -71,7 +103,7 @@ function love.draw()
    -- 1 is at top left... row-major to bottom right
    for block_y=1,playfield_height do
       for block_x=1,playfield_width do
-	 if playfield[(block_y - 1) * playfield_width + block_x] == 1 then
+	 if playfield[block_y][block_x] == 1 then
 	    draw_block(block_x, block_y)
 	 end
       end
@@ -81,7 +113,7 @@ function love.draw()
       for y,row in ipairs(piece) do
 	 for x,v in ipairs(row) do
 	    if v == 1 then
-	       draw_block(piecex + x, piecey + y - 1)
+	       draw_block(piecex + (x - 1), piecey + (y - 1))
 	    end
 	 end
       end
