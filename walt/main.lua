@@ -179,9 +179,6 @@ function try_clearing_rows()
    score = score + cleared ^ 2
 end
 
-
-
--- the only real use cases here are  1 left, 1 up, 1 down, or rot left/right. 
 function piece_collides(test_piece, test_x, test_y)
    for x,y in blocks(test_piece) do
       blockx, blocky = test_x + (x - 1), test_y + (y - 1)
@@ -214,8 +211,6 @@ function love.update(delta)
       if til_next_piece <= 0 then
 	 til_next_piece = piece_timeout
 
-	 -- TODO: Real block...
-	 -- TODO: Check for collisions on the way in (so the game can end...)
 	 piece = random_piece()
 	 piecex = playfield_width / 2
 	 piecey = 1
@@ -242,7 +237,6 @@ function love.draw()
 
    love.graphics.rectangle("line", playfield_screenx - 1, playfield_screeny - 1, playfield_width * block_width + 2, playfield_height * block_height + 2)
 
-   -- grid is 10x25,10px/block, from 100, 100 to 199, 249
    -- 1 is at top left... row-major to bottom right
    for x,y in blocks(playfield) do
       draw_block(x,y)
@@ -265,7 +259,6 @@ function draw_block(x, y)
    love.graphics.line(blockx + block_width - 2, blocky + 1, blockx + 1, blocky + block_height - 2)
 end
 
--- Inefficient, and only as the piece is when blocks is run...
 -- Not exactly necessary, but removes 2 levels of nesting in 2 or 3 places.
 function blocks(piece)
    local pairs = {}
