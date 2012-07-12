@@ -78,13 +78,21 @@ end
 
 -- Just realized I royally screwed up. Emacs got it right and I missed it despite basing the pieces on emacs...
 function try_rotate(dir)
-   local test_piece = blank_piece()
+   local test_piece = {}
 
+   -- copy shape...
+   for y,row in ipairs(piece) do
+      test_piece[y] = {}
+      for x,v in ipairs(row) do
+	 test_piece[y][x] = 0
+      end
+   end
+	 
    for x,y in blocks(piece) do
       if dir == "left" then
-	 test_piece[5-x][y] = 1
+	 test_piece[(#piece + 1)-x][y] = 1
       else
-	 test_piece[x][5-y] = 1
+	 test_piece[x][(#(piece[1]) + 1)-y] = 1
       end
    end
 
