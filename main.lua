@@ -21,23 +21,31 @@ function love.load()
       end
    end
 
-   -- test dropping...
-   for y=playfield_height - 4,playfield_height do
-      for x=1,playfield_width - 1 do
-	 playfield[y][x] = 1
+   game_paused = false
+
+   game_state = "unstarted"
+
+   drop_timeout = 0.3
+   piece_timeout = 2
+--   drop_timeout = 0.05
+--   piece_timeout = 0.05
+   score = 0
+end
+
+function start_game()
+   for y=1,playfield_height do
+      playfield[y] = {}
+
+      for x=1,playfield_width do
+	 playfield[y][x] = 0
       end
    end
 
-   game_paused = false
-
-   drop_timeout = 0.2
-   piece_timeout = 2
-   til_next_piece = piece_timeout
-   til_next_drop = drop_timeout
    piece = nil
-   piecex = 0
-   piecey = 0 
+   til_next_piece = piece_timeout
    score = 0
+   
+   game_state = "running"
 end
 
 all_pieces = {
@@ -71,16 +79,25 @@ function love.keypressed(key, unicode)
 	 try_piece_shift(1)
       end
 
-      if key == "p" then
-	 game_paused = not game_paused
-      end
-
       if key == "z" then
 	 try_rotate("left")
       end
 
       if key == "x" then
 	 try_rotate("right")
+      end
+
+   end
+
+
+   if key == "p" then
+      game_paused = not game_paused
+   end
+
+
+   if key == "n" then
+      if game_state ~= "running" or game_paused then
+	 start_game()
       end
    end
 end
@@ -183,6 +200,8 @@ end
 function love.update(delta)
    if game_paused then return end
 
+   if game_state ~= "running" then return end
+
    if piece then
       til_next_drop = til_next_drop - delta
       
@@ -202,6 +221,11 @@ function love.update(delta)
 	 piecex = playfield_width / 2
 	 piecey = 1
 
+	 if piece_collides(piece, piecex, piecey) then
+	    game_state = "over"
+	    return
+	 end
+
 	 piece_on_screen = true
 	 til_next_drop = drop_timeout
       end
@@ -209,8 +233,10 @@ function love.update(delta)
 end
 
 function love.draw()
-   if game_paused then
-      love.graphics.print("Paused", 400, 300)
+   if game_state == "over" then
+      love.graphics.printf("Game Over", playfield_screenx, playfield_screeny - 20, playfield_width * block_width, "right")
+   elseif game_paused then
+      love.graphics.printf("Paused", playfield_screenx, playfield_screeny - 20, playfield_width * block_width, "right")
    end
 
    love.graphics.print("Score: " .. tostring(score), playfield_screenx, playfield_screeny - 20)
@@ -219,12 +245,8 @@ function love.draw()
 
    -- grid is 10x25,10px/block, from 100, 100 to 199, 249
    -- 1 is at top left... row-major to bottom right
-   for block_y=1,playfield_height do
-      for block_x=1,playfield_width do
-	 if playfield[block_y][block_x] == 1 then
-	    draw_block(block_x, block_y)
-	 end
-      end
+   for x,y in blocks(playfield) do
+      draw_block(x,y)
    end
 
    if piece then
@@ -234,11 +256,18 @@ function love.draw()
    end
 end
 
+-- Well...
+-- An image would probably be more appropriate, but this is supposed to be one file.
 function draw_block(x, y)
-   love.graphics.rectangle("line", (x - 1) * block_width + playfield_screenx, (y - 1) * block_height + playfield_screeny, block_width - 1, block_height - 1)
+   blockx = (x - 1) * block_width + playfield_screenx
+   blocky = (y - 1) * block_height + playfield_screeny
+   love.graphics.rectangle("line", blockx, blocky, block_width - 1, block_height - 1)
+   love.graphics.line(blockx + 1, blocky + 1, blockx + block_width - 2, blocky + block_height - 2)
+   love.graphics.line(blockx + block_width - 2, blocky + 1, blockx + 1, blocky + block_height - 2)
 end
 
 -- Inefficient, and only as the piece is when blocks is run...
+-- Not exactly necessary, but removes 2 levels of nesting in 2 or 3 places.
 function blocks(piece)
    local pairs = {}
    local index = 1
