@@ -1,4 +1,6 @@
 function love.load()
+   math.randomseed(os.time())
+
    -- game constants
    block_width = 12
    block_height = 12
@@ -38,12 +40,19 @@ function love.load()
    score = 0
 end
 
-function blank_piece()
-   return {{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}}
-end
+all_pieces = {
+   {{0,0,0},{1,1,1},{0,1,0}},
+   {{0,1,0,0},{0,1,0,0},{0,1,0,0},{0,1,0,0}},
+   {{0,1,0},{0,1,0},{0,1,1}},
+   {{0,1,0},{0,1,0},{1,1,0}},
+   {{0,1,0},{1,1,0},{1,0,0}},
+   {{0,1,0},{0,1,1},{0,0,1}},
+   {{1,1},{1,1}}
+}
+
 
 function random_piece()
-   return {{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,0,0,0}}
+   return all_pieces[math.random(#all_pieces)]
 end
 
 function love.keypressed(key, unicode)
@@ -76,7 +85,7 @@ function love.keypressed(key, unicode)
    end
 end
 
--- Just realized I royally screwed up. Emacs got it right and I missed it despite basing the pieces on emacs...
+-- I'm going to go ahead and start pretending this is SRS.
 function try_rotate(dir)
    local test_piece = {}
 
@@ -89,7 +98,7 @@ function try_rotate(dir)
    end
 	 
    for x,y in blocks(piece) do
-      if dir == "left" then
+      if dir == "right" then
 	 test_piece[(#piece + 1)-x][y] = 1
       else
 	 test_piece[x][(#(piece[1]) + 1)-y] = 1
