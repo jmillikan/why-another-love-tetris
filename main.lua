@@ -19,20 +19,38 @@ function love.load()
       end
    end
 
+   -- test dropping...
+   for y=playfield_height - 4,playfield_height do
+      for x=1,playfield_width - 1 do
+	 playfield[y][x] = 1
+      end
+   end
+
    game_paused = false
 
    drop_timeout = 0.2
    piece_timeout = 2
    til_next_piece = piece_timeout
+   til_next_drop = drop_timeout
    piece = nil
    piecex = 0
    piecey = 0 
    score = 0
 end
 
+function blank_piece()
+   return {{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}}
+end
+
+function random_piece()
+   return {{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,0,0,0}}
+end
+
 function love.keypressed(key, unicode)
    if piece then
       if key == "down" then
+	 til_next_drop = drop_timeout
+
 	 try_piece_drop()
       end
 
@@ -43,38 +61,51 @@ function love.keypressed(key, unicode)
       if key == "right" then
 	 try_piece_shift(1)
       end
+
+      if key == "p" then
+	 game_paused = not game_paused
+      end
+
+      if key == "z" then
+	 try_rotate("left")
+      end
+
+      if key == "x" then
+	 try_rotate("right")
+      end
+   end
+end
+
+-- Just realized I royally screwed up. Emacs got it right and I missed it despite basing the pieces on emacs...
+function try_rotate(dir)
+   local test_piece = blank_piece()
+
+   for x,y in blocks(piece) do
+      if dir == "left" then
+	 test_piece[5-x][y] = 1
+      else
+	 test_piece[x][5-y] = 1
+      end
+   end
+
+   if not piece_collides(test_piece, piecex, piecey) then
+      piece = test_piece
    end
 end
 
 function try_piece_shift(dir)
    -- dir is just an integer...
-   -- meh
 
-   for y,row in ipairs(piece) do
-      for x,v in ipairs(row) do
-	 if piece[y][x] == 1 then
-	    newx = piecex + (x - 1) + dir
-
-	    -- out to left or right?
-	    if newx < 1 or newx > playfield_width then
-	       return
-	    end
-	 end
-      end
+   if not piece_collides(piece, piecex + dir, piecey) then
+      piecex = piecex + dir
    end
-
-   piecex = piecex + dir
 end
 
--- drop is not quite the right word. Anytime the block is forced down, either by player or timer.
+-- drop is not quite the right word. Anytime the block is forced down by 1, either by player or timer.
 function try_piece_drop()
-   if piece_bonks() then
-      for y,row in ipairs(piece) do
-	 for x,i in ipairs(row) do
-	    if piece[y][x] == 1 then
-	       playfield[piecey + (y - 1)][piecex + (x - 1)] = 1
-	    end
-	 end
+   if piece_collides(piece, piecex, piecey+1) then
+      for x,y in blocks(piece) do
+	 playfield[piecey + (y - 1)][piecex + (x - 1)] = 1
       end
 
       piece = nil
@@ -88,16 +119,48 @@ end
 function try_clearing_rows()
    local rows_to_clear = {}
    local clear_row
+   local cleared = 0
 
-   for y,row in ipairs(playfield) do
+   for y=1,playfield_height do
+      row = playfield[y]
       clear_row = true
+
       for x,v in ipairs(row) do
 	 if v == 0 then clear_row = false end
       end
-      if clear_row then table.insert(rows_to_clear, y) end
+      
+      if clear_row then
+	 cleared = cleared + 1
+
+	 -- Remove the row and shift it to the top.
+	 table.remove(playfield, y)
+
+	 for x,v in ipairs(row) do
+	    row[x] = 0
+	 end
+	 
+	 table.insert(playfield, 1, row)
+      end
    end
 
-   score = score + (#rows_to_clear) ^ 2
+   score = score + cleared ^ 2
+end
+
+
+
+-- the only real use cases here are  1 left, 1 up, 1 down, or rot left/right. 
+function piece_collides(test_piece, test_x, test_y)
+   for x,y in blocks(test_piece) do
+      blockx, blocky = test_x + (x - 1), test_y + (y - 1)
+
+      if blocky > playfield_height or blocky < 1 or
+	 blockx > playfield_width or blockx < 1 or
+	 playfield[blocky][blockx] == 1 then
+	 return true
+      end
+   end
+
+   return false
 end
 
 function love.update(delta)
@@ -118,29 +181,12 @@ function love.update(delta)
 
 	 -- TODO: Real block...
 	 -- TODO: Check for collisions on the way in (so the game can end...)
-	 piece = {{1,0,0,0},{1,0,0,0},{1,0,0,0},{1,0,0,0}}
+	 piece = random_piece()
 	 piecex = playfield_width / 2
 	 piecey = 1
 
 	 piece_on_screen = true
 	 til_next_drop = drop_timeout
-      end
-   end
-end
-
-function piece_bonks()
-   for y,row in ipairs(piece) do
-      for x,v in ipairs(row) do
-	 -- below playing field?
-	 if piece[y][x] == 1 then
-	    if piecey + (y - 1) + 1 > playfield_height then
-	       return true
-	    end
-
-	    if playfield[piecey + (y - 1) + 1][piecex + (x - 1)] == 1 then
-	       return true
-	    end
-	 end
       end
    end
 end
@@ -165,16 +211,35 @@ function love.draw()
    end
 
    if piece then
-      for y,row in ipairs(piece) do
-	 for x,v in ipairs(row) do
-	    if v == 1 then
-	       draw_block(piecex + (x - 1), piecey + (y - 1))
-	    end
-	 end
+      for x,y in blocks(piece) do
+	 draw_block(piecex + (x - 1), piecey + (y - 1))
       end
    end
 end
 
 function draw_block(x, y)
    love.graphics.rectangle("line", (x - 1) * block_width + playfield_screenx, (y - 1) * block_height + playfield_screeny, block_width - 1, block_height - 1)
+end
+
+-- Inefficient, and only as the piece is when blocks is run...
+function blocks(piece)
+   local pairs = {}
+   local index = 1
+
+   for y,row in ipairs(piece) do
+      for x,v in ipairs(row) do
+	 if v == 1 then
+	    table.insert(pairs, {x,y})
+	 end
+      end
+   end
+
+   return function() 
+      if index <= #pairs then
+	 index = index + 1
+	 return pairs[index - 1][1], pairs[index - 1][2]
+      else
+	 return nil
+      end
+	  end
 end
