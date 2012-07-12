@@ -57,7 +57,6 @@ all_pieces = {
    {{1,1},{1,1}}
 }
 
-
 function random_piece()
    return all_pieces[math.random(#all_pieces)]
 end
@@ -85,14 +84,11 @@ function love.keypressed(key, unicode)
       if key == "x" then
 	 try_rotate("right")
       end
-
    end
-
 
    if key == "p" then
       game_paused = not game_paused
    end
-
 
    if key == "n" then
       if game_state ~= "running" or game_paused then
@@ -112,7 +108,7 @@ function try_rotate(dir)
 	 test_piece[y][x] = 0
       end
    end
-	 
+   
    for x,y in blocks(piece) do
       if dir == "right" then
 	 test_piece[(#piece + 1)-x][y] = 1
@@ -261,23 +257,14 @@ end
 
 -- Not exactly necessary, but removes 2 levels of nesting in 2 or 3 places.
 function blocks(piece)
-   local pairs = {}
-   local index = 1
-
-   for y,row in ipairs(piece) do
-      for x,v in ipairs(row) do
-	 if v == 1 then
-	    table.insert(pairs, {x,y})
+   return coroutine.wrap(
+      function() 
+	 for y,row in ipairs(piece) do
+	    for x,v in ipairs(row) do
+	       if v == 1 then
+		  coroutine.yield(x,y)
+	       end
+	    end
 	 end
-      end
-   end
-
-   return function() 
-      if index <= #pairs then
-	 index = index + 1
-	 return pairs[index - 1][1], pairs[index - 1][2]
-      else
-	 return nil
-      end
-	  end
+      end)
 end
