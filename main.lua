@@ -5,7 +5,7 @@ function love.load()
    block_width = 12
    block_height = 12
 
-   playfield_width, playfield_height = 12, 30
+   playfield_width, playfield_height = 10,25
    
    playfield_screenx = 400 - playfield_width * block_width / 2
    playfield_screeny = 300 - playfield_height * block_height / 2
@@ -23,12 +23,11 @@ function love.load()
 
    game_paused = false
 
+   -- one of "unstarted", "running", "over", orthogonal to pause
    game_state = "unstarted"
 
    drop_timeout = 0.3
    piece_timeout = 2
---   drop_timeout = 0.05
---   piece_timeout = 0.05
    score = 0
 end
 
