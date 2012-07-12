@@ -233,9 +233,9 @@ end
 
 function love.draw()
    if game_state == "over" then
-      love.graphics.printf("Game Over", playfield_screenx, playfield_screeny - 20, playfield_width * block_width, "right")
+      love.graphics.print("Game Over", playfield_screenx, playfield_screeny - 40)
    elseif game_paused then
-      love.graphics.printf("Paused", playfield_screenx, playfield_screeny - 20, playfield_width * block_width, "right")
+      love.graphics.print("Paused", playfield_screenx, playfield_screeny - 40)
    end
 
    love.graphics.print("Score: " .. tostring(score), playfield_screenx, playfield_screeny - 20)
