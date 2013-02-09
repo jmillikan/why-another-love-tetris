@@ -1,5 +1,3 @@
-FAST = true
-
 _ = require "underscore/underscore"
 require "across_state_lines"
 
@@ -8,45 +6,32 @@ function dispatch(k,t)
    return (a[1])(unpack(_.slice(a,2,#a-1))) 
 end
 
-function love.load()
-   math.randomseed(os.time())
+math.randomseed(os.time())
 
-   -- game constants
-   block_width = 12
-   block_height = 12
+-- game constants
+block_width = 12
+block_height = 12
 
-   playfield_width, playfield_height = 10,25
-   
-   playfield_screenx = 400 - playfield_width * block_width / 2
-   playfield_screeny = 300 - playfield_height * block_height / 2
+playfield_width, playfield_height = 10,25
 
-   -- game state
-   playfield = {}
+playfield_screenx = 400 - playfield_width * block_width / 2
+playfield_screeny = 300 - playfield_height * block_height / 2
 
-   for y=1,playfield_height do
-      playfield[y] = {}
+drop_timeout = 0.3
+piece_timeout = 2
 
-      for x=1,playfield_width do
-	 playfield[y][x] = 0
-      end
-   end
-
-   drop_timeout = 0.3
-   piece_timeout = 2
-
-   if FAST then
-      drop_timeout = 0.05
-      piece_timeout = 0.05
-   end
-
-   score = 0
-
-   ui = init_ui_graph(UI_STATES, 'unstarted')
+if FAST then
+   drop_timeout = 0.05
+   piece_timeout = 0.05
 end
+
+score = 0
 
 game = {}
 
 function game:from_unstarted()
+   playfield = {}
+
    for y=1,playfield_height do
       playfield[y] = {}
 
@@ -79,13 +64,13 @@ end
 function game:keypressed(key, unicode)
    if piece then
       dispatch(key, 
-	 {
-	    down = {function() til_next_drop = drop_timeout; try_piece_drop(); end},
-	    left = {try_piece_shift, -1},
-	    right = {try_piece_shift, 1},
-	    z = {try_rotate, "left"},
-	    x = {try_rotate, "right"}
-	 })
+	       {
+		  down = {function() til_next_drop = drop_timeout; try_piece_drop(); end},
+		  left = {try_piece_shift, -1},
+		  right = {try_piece_shift, 1},
+		  z = {try_rotate, "left"},
+		  x = {try_rotate, "right"}
+	       })
    end
 
    if key == "p" then
@@ -257,6 +242,11 @@ function blocks(piece)
 end
 
 
+function show_text(text, height)
+   love.graphics.setColor(200,200,200)
+   love.graphics.printf(text, 0, height, love.graphics.getWidth(), "center")
+end
+
 function state_thunk(s)
    return function()
       ui:change_ui_state(s)
@@ -272,7 +262,10 @@ end
 
 UI_STATES = {
    unstarted = {
-      draw = function() game:draw() end,
+      draw = function() 
+	 show_text("\"Tetris\"", 200)
+	 show_text("Press n to begin.", 240)
+      end,
       keypressed = keymap_method({ n = state_thunk('running') }),
       to = { 'running' }
    },
@@ -280,17 +273,23 @@ UI_STATES = {
    paused = {
       to = { 'running' },
       draw = function()
-	 love.graphics.print("Paused", playfield_screenx, playfield_screeny - 40)
+	 show_text("** Pause **", 100)
 	 game:draw()
       end,
       keypressed = keymap_method({ p = state_thunk('running') })
    },
    over = {
       draw = function()
-	 love.graphics.print("Game Over", playfield_screenx, playfield_screeny - 40)
+	 show_text("Game Over", 80)
+	 show_text("Press n to try again.", 100)
 	 game:draw()
       end,
       keypressed = keymap_method({ n = state_thunk('running') }),
       to = { 'running' }
    }
 }
+
+function love.load()
+   ui = init_ui_graph(UI_STATES, 'unstarted')
+end
+
