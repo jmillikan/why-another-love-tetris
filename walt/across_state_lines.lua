@@ -1,3 +1,4 @@
+require "underscore/underscore"
 
 function change_ui_state(self, new_state_name)
    local old_state, new_state
@@ -51,8 +52,6 @@ function init_ui_graph(state_graph, first_state_name)
 
    return ui_state_manager
 end
-
-
 
 -- A trio of functions for building dazzlingly bad UIs right in the state graph literal.
 function show_text(text, height)
