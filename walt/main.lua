@@ -1,3 +1,13 @@
+FAST = true
+
+_ = require "underscore/underscore"
+require "across_state_lines"
+
+function dispatch(k,t)
+   local a = t[k] or {_.identity}
+   return (a[1])(unpack(_.slice(a,2,#a-1))) 
+end
+
 function love.load()
    math.randomseed(os.time())
 
@@ -21,17 +31,22 @@ function love.load()
       end
    end
 
-   game_paused = false
-
-   -- one of "unstarted", "running", "over", orthogonal to pause
-   game_state = "unstarted"
-
    drop_timeout = 0.3
    piece_timeout = 2
+
+   if FAST then
+      drop_timeout = 0.05
+      piece_timeout = 0.05
+   end
+
    score = 0
+
+   ui = init_ui_graph(UI_STATES, 'unstarted')
 end
 
-function start_game()
+game = {}
+
+function game:from_unstarted()
    for y=1,playfield_height do
       playfield[y] = {}
 
@@ -43,9 +58,9 @@ function start_game()
    piece = nil
    til_next_piece = piece_timeout
    score = 0
-   
-   game_state = "running"
 end
+
+game.from_over = game.from_unstarted
 
 all_pieces = {
    {{0,0,0},{1,1,1},{0,1,0}},
@@ -61,39 +76,20 @@ function random_piece()
    return all_pieces[math.random(#all_pieces)]
 end
 
-function love.keypressed(key, unicode)
+function game:keypressed(key, unicode)
    if piece then
-      if key == "down" then
-	 til_next_drop = drop_timeout
-
-	 try_piece_drop()
-      end
-
-      if key == "left" then
-	 try_piece_shift(-1)
-      end
-
-      if key == "right" then
-	 try_piece_shift(1)
-      end
-
-      if key == "z" then
-	 try_rotate("left")
-      end
-
-      if key == "x" then
-	 try_rotate("right")
-      end
+      dispatch(key, 
+	 {
+	    down = {function() til_next_drop = drop_timeout; try_piece_drop(); end},
+	    left = {try_piece_shift, -1},
+	    right = {try_piece_shift, 1},
+	    z = {try_rotate, "left"},
+	    x = {try_rotate, "right"}
+	 })
    end
 
    if key == "p" then
-      game_paused = not game_paused
-   end
-
-   if key == "n" then
-      if game_state ~= "running" or game_paused then
-	 start_game()
-      end
+      ui:change_ui_state('paused')
    end
 end
 
@@ -104,6 +100,7 @@ function try_rotate(dir)
    -- copy shape...
    for y,row in ipairs(piece) do
       test_piece[y] = {}
+
       for x,v in ipairs(row) do
 	 test_piece[y][x] = 0
       end
@@ -189,11 +186,7 @@ function piece_collides(test_piece, test_x, test_y)
    return false
 end
 
-function love.update(delta)
-   if game_paused then return end
-
-   if game_state ~= "running" then return end
-
+function game:update(delta)
    if piece then
       til_next_drop = til_next_drop - delta
       
@@ -212,7 +205,7 @@ function love.update(delta)
 	 piecey = 1
 
 	 if piece_collides(piece, piecex, piecey) then
-	    game_state = "over"
+	    ui:change_ui_state('over')
 	    return
 	 end
 
@@ -222,13 +215,7 @@ function love.update(delta)
    end
 end
 
-function love.draw()
-   if game_state == "over" then
-      love.graphics.print("Game Over", playfield_screenx, playfield_screeny - 40)
-   elseif game_paused then
-      love.graphics.print("Paused", playfield_screenx, playfield_screeny - 40)
-   end
-
+function game:draw()
    love.graphics.print("Score: " .. tostring(score), playfield_screenx, playfield_screeny - 20)
 
    love.graphics.rectangle("line", playfield_screenx - 1, playfield_screeny - 1, playfield_width * block_width + 2, playfield_height * block_height + 2)
@@ -255,7 +242,7 @@ function draw_block(x, y)
    love.graphics.line(blockx + block_width - 2, blocky + 1, blockx + 1, blocky + block_height - 2)
 end
 
--- Not exactly necessary, but removes 2 levels of nesting in 2 or 3 places.
+-- Removes 2 levels of nesting in a few places.
 function blocks(piece)
    return coroutine.wrap(
       function() 
@@ -268,3 +255,42 @@ function blocks(piece)
 	 end
       end)
 end
+
+
+function state_thunk(s)
+   return function()
+      ui:change_ui_state(s)
+      end
+end
+
+function keymap_method(map) 
+   return function(s, key, unicode) 
+      (map[key] or _.identity)()
+	  end
+end
+
+
+UI_STATES = {
+   unstarted = {
+      draw = function() game:draw() end,
+      keypressed = keymap_method({ n = state_thunk('running') }),
+      to = { 'running' }
+   },
+   running = _.extend(game, { to = { 'over', 'paused' } }),
+   paused = {
+      to = { 'running' },
+      draw = function()
+	 love.graphics.print("Paused", playfield_screenx, playfield_screeny - 40)
+	 game:draw()
+      end,
+      keypressed = keymap_method({ p = state_thunk('running') })
+   },
+   over = {
+      draw = function()
+	 love.graphics.print("Game Over", playfield_screenx, playfield_screeny - 40)
+	 game:draw()
+      end,
+      keypressed = keymap_method({ n = state_thunk('running') }),
+      to = { 'running' }
+   }
+}
